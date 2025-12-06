@@ -1,9 +1,11 @@
 """
-Interventions des Sapeurs-Pompiers en France (2023)
-Dashboard Streamlit - EFREI Paris
-#EFREIDataStories2025
+Dashboard Streamlit - Interventions des Sapeurs-Pompiers (2023)
+EFREI Paris - Projet Data Visualization
 """
 
+# =============================================================================
+# IMPORTS
+# =============================================================================
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -19,31 +21,43 @@ st.set_page_config(
     layout="wide"
 )
 
+# FIX DU TEXTE INVISIBLE DANS LES BOITES BLANCHES
 st.markdown("""
 <style>
+
+    /* Force texte noir dans les box */
+    .highlight-box, .highlight-box * {
+        color: #000 !important;
+    }
+    .insight-box, .insight-box * {
+        color: #000 !important;
+    }
+
+    .highlight-box {
+        background: #fdecea !important;
+        border-left: 4px solid #e74c3c;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 12px 0;
+    }
+    .insight-box {
+        background: #e9f3ff !important;
+        border-left: 4px solid #3498db;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 12px 0;
+    }
+
     .big-number {
-        font-size: 2.5rem;
+        font-size: 2.3rem;
         font-weight: 700;
         color: #e74c3c;
     }
     .subtitle {
-        font-size: 1rem;
-        color: #7f8c8d;
+        font-size: 0.9rem;
+        color: #555;
     }
-    .highlight-box {
-        background: #fff5f5;
-        border-left: 4px solid #e74c3c;
-        padding: 15px;
-        border-radius: 0 8px 8px 0;
-        margin: 10px 0;
-    }
-    .insight-box {
-        background: #f0f9ff;
-        border-left: 4px solid #3498db;
-        padding: 15px;
-        border-radius: 0 8px 8px 0;
-        margin: 10px 0;
-    }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -52,16 +66,11 @@ st.markdown("""
 # =============================================================================
 @st.cache_data
 def load_data():
-    # Essayer plusieurs encodages
     try:
-        df = pd.read_csv('interventions2023.csv', sep=';', encoding='latin-1')
+        df = pd.read_csv("interventions2023.csv", sep=";", encoding="latin-1")
     except:
-        try:
-            df = pd.read_csv('interventions2023.csv', sep=';', encoding='utf-8')
-        except:
-            df = pd.read_csv('interventions2023.csv', sep=';', encoding='cp1252')
-    
-    # Renommer les colonnes pour eviter les problemes d'accents
+        df = pd.read_csv("interventions2023.csv", sep=";", encoding="utf-8")
+
     df.columns = [
         'Annee', 'Zone', 'Region', 'Numero', 'Departement', 'Categorie',
         'Feux_habitations', 'dont_cheminees', 'Feux_ERP_sommeil', 'Feux_ERP_sans_sommeil',
@@ -81,376 +90,229 @@ def load_data():
         'Eboulements', 'Deposes_objets', 'Piquets_securite', 'Engins_explosifs',
         'Autres_divers', 'Divers', 'Operations_diverses', 'Total_interventions'
     ]
-    
-    # Fonction de nettoyage des nombres
+
+    # Nettoyage des valeurs numériques
     def clean_numeric(value):
-        if pd.isna(value):
-            return 0
-        if isinstance(value, (int, float)):
-            return int(value)
-        if isinstance(value, str):
-            cleaned = value.replace(' ', '').replace('\xa0', '').replace(',', '.')
-            try:
-                return int(float(cleaned))
-            except:
-                return 0
-        return 0
-    
-    # Colonnes numeriques (toutes sauf les 6 premieres)
-    cols_num = df.columns[6:].tolist()
-    
-    for col in cols_num:
+        if pd.isna(value): return 0
+        if isinstance(value, (int, float)): return int(value)
+        cleaned = str(value).replace(" ", "").replace(",", ".")
+        try: return int(float(cleaned))
+        except: return 0
+
+    numeric_cols = df.columns[6:]
+    for col in numeric_cols:
         df[col] = df[col].apply(clean_numeric)
-    
-    # Colonnes supplementaires
-    df['Total_Malaises'] = df['Malaises_urgence_vitale'] + df['Malaises_carence']
-    df['Pct_Carences'] = np.where(
-        df['Total_Malaises'] > 0,
-        (df['Malaises_carence'] / df['Total_Malaises'] * 100).round(1), 
+
+    df["Total_Malaises"] = df["Malaises_urgence_vitale"] + df["Malaises_carence"]
+    df["Pct_Carences"] = np.where(
+        df["Total_Malaises"] > 0,
+        df["Malaises_carence"] / df["Total_Malaises"] * 100,
         0
     )
-    
-    # Type de zone
-    def get_type_zone(row):
-        if row['Numero'] == 'BSPP':
-            return 'BSPP (Paris)'
-        elif row['Numero'] == 'BMPM':
-            return 'BMPM (Marseille)'
-        elif row['Zone'] in ['Antilles', 'Guyane', 'Ocean indien']:
-            return 'DOM-TOM'
-        else:
-            return 'Metropole'
-    
-    df['Type_Zone'] = df.apply(get_type_zone, axis=1)
-    
+
+    # Type de territoire
+    def zone_type(row):
+        if row["Numero"] == "BSPP": return "BSPP (Paris)"
+        if row["Numero"] == "BMPM": return "BMPM (Marseille)"
+        if row["Zone"] in ["Antilles", "Guyane", "Ocean indien"]: return "DOM-TOM"
+        return "Metropole"
+
+    df["Type_Zone"] = df.apply(zone_type, axis=1)
+
     return df
 
 df_raw = load_data()
 
 # =============================================================================
-# SIDEBAR - FILTRES
+# SIDEBAR FILTRES
 # =============================================================================
 st.sidebar.header("Filtres")
 
-# Filtre par region
-regions = ['Toutes'] + sorted(df_raw['Region'].unique().tolist())
-selected_region = st.sidebar.selectbox("Region", regions)
+regions = ["Toutes"] + sorted(df_raw["Region"].unique())
+selected_region = st.sidebar.selectbox("Région", regions)
 
-# Filtre par type de zone
-types_zone = ['Tous'] + df_raw['Type_Zone'].unique().tolist()
-selected_type = st.sidebar.selectbox("Type de territoire", types_zone)
+zones = ["Tous"] + df_raw["Type_Zone"].unique().tolist()
+selected_zone = st.sidebar.selectbox("Type de territoire", zones)
 
-# Filtre par categorie SDIS
-categories = ['Toutes'] + [c for c in df_raw['Categorie'].unique().tolist() if pd.notna(c) and c != '']
-selected_cat = st.sidebar.selectbox("Categorie SDIS (A=grand, B=moyen, C=petit)", categories)
+categories = ["Toutes"] + [c for c in df_raw["Categorie"].unique() if pd.notna(c)]
+selected_cat = st.sidebar.selectbox("Catégorie SDIS", categories)
 
-# Application des filtres
 df = df_raw.copy()
-if selected_region != 'Toutes':
-    df = df[df['Region'] == selected_region]
-if selected_type != 'Tous':
-    df = df[df['Type_Zone'] == selected_type]
-if selected_cat != 'Toutes':
-    df = df[df['Categorie'] == selected_cat]
+if selected_region != "Toutes": df = df[df["Region"] == selected_region]
+if selected_zone != "Tous": df = df[df["Type_Zone"] == selected_zone]
+if selected_cat != "Toutes": df = df[df["Categorie"] == selected_cat]
 
-# Info sidebar
 st.sidebar.markdown("---")
-st.sidebar.markdown(f"**{len(df)}** territoires selectionnes")
+st.sidebar.write(f"**{len(df)} territoires sélectionnés**")
 st.sidebar.markdown("---")
-st.sidebar.markdown("""
-**Source des donnees**  
-[data.gouv.fr](https://www.data.gouv.fr/datasets/interventions-realisees-par-les-services-d-incendie-et-de-secours/)  
-Ministere de l'Interieur - 2023
-""")
-
-<style>
-    /* Force la couleur du texte dans les boîtes */
-    .highlight-box, .highlight-box * {
-        color: #000 !important;
-    }
-    .insight-box, .insight-box * {
-        color: #000 !important;
-    }
-
-    /* Fix global text inside custom boxes                        */
-    .white-box, .white-box * {
-        color: #000 !important;
-    }
-</style>
-
 
 # =============================================================================
 # HEADER
 # =============================================================================
 st.title("🚒 Les Pompiers en France (2023)")
-st.caption("Source: data.gouv.fr - Ministere de l'Interieur | Licence Ouverte")
+st.caption("Source : data.gouv.fr — Ministère de l’Intérieur")
 
 st.markdown("---")
 
 # =============================================================================
-# KPIs DYNAMIQUES
+# KPIs
 # =============================================================================
-total_interventions = df['Total_interventions'].sum()
-total_incendies = df['Incendies'].sum()
-total_sav = df['Secours_victime'].sum()
-total_sap = df['Secours_personne'].sum()
-total_carences = df['Malaises_carence'].sum()
-total_malaises = df['Total_Malaises'].sum()
+total_interventions = df["Total_interventions"].sum()
+total_incendies = df["Incendies"].sum()
+total_sav = df["Secours_victime"].sum()
+total_sap = df["Secours_personne"].sum()
+total_carences = df["Malaises_carence"].sum()
+total_malaises = df["Total_Malaises"].sum()
 
-# Comparaison avec le national
-national_total = df_raw['Total_interventions'].sum()
-pct_of_national = (total_interventions / national_total * 100)
+pct_medical = (total_sav + total_sap) / total_interventions * 100
+pct_incendies = total_incendies / total_interventions * 100
+pct_carences = total_carences / total_malaises * 100
 
-col1, col2, col3, col4 = st.columns(4)
+c1, c2, c3, c4 = st.columns(4)
 
-with col1:
-    st.metric(
-        "Total interventions", 
-        f"{total_interventions:,.0f}".replace(",", " "),
-        f"{pct_of_national:.1f}% du national"
-    )
-with col2:
-    pct_medical = (total_sav + total_sap) / total_interventions * 100 if total_interventions > 0 else 0
-    st.metric("Urgences medicales", f"{pct_medical:.0f}%")
-with col3:
-    pct_incendies = total_incendies / total_interventions * 100 if total_interventions > 0 else 0
-    st.metric("Incendies", f"{pct_incendies:.1f}%")
-with col4:
-    pct_carences = total_carences / total_malaises * 100 if total_malaises > 0 else 0
-    st.metric("Taux de carences", f"{pct_carences:.0f}%")
+c1.metric("Total interventions", f"{total_interventions:,}".replace(",", " "))
+c2.metric("Urgences médicales", f"{pct_medical:.0f}%")
+c3.metric("Incendies", f"{pct_incendies:.1f}%")
+c4.metric("Taux de carences", f"{pct_carences:.0f}%")
 
 st.markdown("---")
 
 # =============================================================================
-# SECTION 1 : LE MYTHE VS LA REALITE
+# MYTHE VS REALITE
 # =============================================================================
-st.header("Le mythe vs la realite")
+st.header("Le mythe vs la réalité")
 
 col1, col2 = st.columns(2)
 
 with col1:
     st.markdown("""
     <div class="highlight-box">
-    <h4>🔥 Ce qu'on imagine</h4>
-    <p>Des camions rouges, des lances a incendie, des sauvetages dans les flammes...</p>
+        <h4>🔥 Ce qu’on imagine</h4>
+        Des camions rouges, des lances à incendie, des sauvetages dans les flammes…
     </div>
     """, unsafe_allow_html=True)
 
 with col2:
     st.markdown(f"""
     <div class="insight-box">
-    <h4>📊 La realite 2023</h4>
-    <p><strong>{pct_incendies:.1f}%</strong> d'incendies seulement<br>
-    <strong>{pct_medical:.0f}%</strong> d'urgences medicales<br>
-    1 intervention toutes les <strong>7 secondes</strong></p>
+        <h4>📊 La réalité 2023</h4>
+        <strong>{pct_incendies:.1f}%</strong> d’incendies<br>
+        <strong>{pct_medical:.0f}%</strong> d’urgences médicales<br>
+        1 intervention toutes les <strong>7 secondes</strong>
     </div>
     """, unsafe_allow_html=True)
 
 # =============================================================================
-# SECTION 2 : GRAPHIQUE REPARTITION
+# RÉPARTITION EN CAMEMBERT
 # =============================================================================
-st.header("Repartition des interventions")
+st.header("Répartition des interventions")
 
-categories_data = {
-    'Secours a victime': df['Secours_victime'].sum(),
-    'Secours a personne': df['Secours_personne'].sum(),
-    'Incendies': df['Incendies'].sum(),
-    'Accidents circulation': df['Accidents_circulation'].sum(),
-    'Operations diverses': df['Operations_diverses'].sum(),
-    'Risques technologiques': df['Risques_technologiques'].sum()
+cats = {
+    "Secours à victime": df["Secours_victime"].sum(),
+    "Secours à personne": df["Secours_personne"].sum(),
+    "Incendies": df["Incendies"].sum(),
+    "Accidents circulation": df["Accidents_circulation"].sum(),
+    "Opérations diverses": df["Operations_diverses"].sum()
 }
 
-fig1 = px.pie(
-    values=list(categories_data.values()),
-    names=list(categories_data.keys()),
-    hole=0.45,
-    color_discrete_sequence=['#e74c3c', '#3498db', '#f39c12', '#9b59b6', '#1abc9c', '#34495e']
+fig = px.pie(
+    names=list(cats.keys()),
+    values=list(cats.values()),
+    hole=0.4,
+    color_discrete_sequence=px.colors.qualitative.Set2
 )
-fig1.update_traces(textposition='outside', textinfo='percent+label')
-fig1.update_layout(showlegend=False, height=400, margin=dict(t=20, b=20))
-st.plotly_chart(fig1, use_container_width=True)
+st.plotly_chart(fig, use_container_width=True)
 
-st.info("💡 **Insight** : Les pompiers sont avant tout des urgentistes. Pres de 9 interventions sur 10 sont des secours medicaux.")
+st.info("💡 **Insight** : Près de 9 interventions sur 10 sont médicales.")
 
 # =============================================================================
-# SECTION 3 : LES CARENCES
+# CARENCES
 # =============================================================================
-st.markdown("---")
-st.header("🏥 Le vrai probleme : les carences ambulancieres")
-
-st.markdown("""
-Une **"carence"**, c'est quand les pompiers interviennent **a la place d'une ambulance** 
-parce qu'il n'y en a pas de disponible. C'est un indicateur de tension du systeme de sante.
-""")
+st.header("🏥 Le vrai problème : les carences ambulancières")
 
 col1, col2 = st.columns([2, 1])
 
 with col1:
-    urgences = df['Malaises_urgence_vitale'].sum()
-    carences = df['Malaises_carence'].sum()
-    
-    fig2 = go.Figure()
-    fig2.add_trace(go.Bar(
-        x=['Urgences vitales', 'Carences (pas d\'ambulance)'],
-        y=[urgences, carences],
-        marker_color=['#2ecc71', '#e74c3c'],
-        text=[f'{urgences:,.0f}', f'{carences:,.0f}'],
-        textposition='outside'
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=["Urgences vitales", "Carences"],
+        y=[df["Malaises_urgence_vitale"].sum(), total_carences],
+        marker_color=["#2ecc71", "#e74c3c"],
+        textposition="outside"
     ))
-    fig2.update_layout(
-        title="Malaises a domicile : urgences vs carences",
-        yaxis_title="Nombre d'interventions",
-        height=400,
-        showlegend=False
-    )
-    st.plotly_chart(fig2, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True)
 
 with col2:
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    if total_malaises > 0:
-        st.markdown(f"""
-        <div style="text-align: center; padding: 20px;">
-            <div class="big-number">{carences/total_malaises*100:.0f}%</div>
-            <div class="subtitle">des malaises sont des carences</div>
-            <br>
-            <div class="big-number">{carences/365:.0f}</div>
-            <div class="subtitle">carences par jour</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-st.warning(f"⚠️ Dans **{carences/total_malaises*100:.0f}%** des cas, quand quelqu'un fait un malaise chez lui, les pompiers interviennent parce qu'il n'y a pas d'ambulance disponible.")
-
-# =============================================================================
-# SECTION 4 : COMPARAISON PAR REGION
-# =============================================================================
-st.markdown("---")
-st.header("🗺️ Ou le systeme craque-t-il ?")
-
-top_carences = df.nlargest(10, 'Malaises_carence')[
-    ['Departement', 'Region', 'Malaises_carence', 'Pct_Carences']
-]
-
-if len(top_carences) > 0:
-    fig3 = px.bar(
-        top_carences,
-        x='Malaises_carence',
-        y='Departement',
-        orientation='h',
-        color='Pct_Carences',
-        color_continuous_scale='Reds',
-        hover_data=['Region', 'Pct_Carences'],
-        labels={'Malaises_carence': 'Nombre de carences', 'Pct_Carences': '% carences'}
-    )
-    fig3.update_layout(
-        title="Top 10 des territoires avec le plus de carences",
-        yaxis={'categoryorder': 'total ascending'},
-        height=400,
-        coloraxis_colorbar_title="% carences"
-    )
-    st.plotly_chart(fig3, use_container_width=True)
-
-# Comparaison par region
-if selected_region == 'Toutes':
-    st.subheader("Taux de carences par region")
-    
-    df_regions = df_raw.groupby('Region').agg({
-        'Malaises_carence': 'sum',
-        'Total_Malaises': 'sum'
-    }).reset_index()
-    df_regions['Taux_Carences'] = (df_regions['Malaises_carence'] / df_regions['Total_Malaises'] * 100).round(1)
-    df_regions = df_regions.sort_values('Taux_Carences', ascending=True)
-    
-    fig4 = px.bar(
-        df_regions,
-        x='Taux_Carences',
-        y='Region',
-        orientation='h',
-        color='Taux_Carences',
-        color_continuous_scale='RdYlGn_r',
-        labels={'Taux_Carences': 'Taux de carences (%)'}
-    )
-    fig4.update_layout(height=450, coloraxis_colorbar_title="% carences")
-    st.plotly_chart(fig4, use_container_width=True)
-    
-    st.info("💡 **Insight** : L'Ile-de-France a le taux de carences le plus eleve. La densite de population sature le systeme de sante.")
-
-# =============================================================================
-# SECTION 5 : IMPLICATIONS
-# =============================================================================
-st.markdown("---")
-st.header("⚠️ Pourquoi c'est un probleme ?")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    st.markdown("""
-    **Pour les pompiers :**
-    - Surcharge de travail
-    - Fatigue et burn-out
-    - Moins disponibles pour les incendies
-    """)
-
-with col2:
-    st.markdown("""
-    **Pour les citoyens :**
-    - Delais d'intervention plus longs
-    - Cout supporte par les impots locaux
-    - Symptome d'un systeme sature
-    """)
-
-if total_carences > 0:
-    heures = (total_carences * 45) / 60
+    st.markdown("<br>", unsafe_allow_html=True)
     st.markdown(f"""
-    <div class="highlight-box">
-    <strong>📊 Impact concret</strong> (sur la selection actuelle)<br>
-    {total_carences:,.0f} carences x 45 min = <strong>{heures:,.0f} heures</strong> passees a remplacer les ambulances
-    </div>
-    """.replace(",", " "), unsafe_allow_html=True)
+        <div style="text-align:center">
+            <div class="big-number">{pct_carences:.0f}%</div>
+            <div class="subtitle">des malaises = carences</div>
+            <br>
+            <div class="big-number">{total_carences/365:.0f}</div>
+            <div class="subtitle">par jour</div>
+        </div>
+    """, unsafe_allow_html=True)
 
 # =============================================================================
-# SECTION 6 : DATA QUALITY
+# TOP 10 CARENCES
 # =============================================================================
-st.markdown("---")
-st.header("📋 Qualite des donnees")
+st.header("🗺️ Où le système craque-t-il ?")
 
-col1, col2, col3 = st.columns(3)
+top = df.nlargest(10, "Malaises_carence")[["Departement", "Malaises_carence", "Pct_Carences"]]
 
-with col1:
-    st.metric("Valeurs manquantes", 0)
-with col2:
-    st.metric("Doublons", 0)
-with col3:
-    st.metric("Territoires couverts", len(df_raw))
+fig3 = px.bar(
+    top,
+    y="Departement",
+    x="Malaises_carence",
+    color="Pct_Carences",
+    orientation="h",
+    color_continuous_scale="Reds"
+)
+st.plotly_chart(fig3, use_container_width=True)
+
+# =============================================================================
+# IMPACT
+# =============================================================================
+st.header("⚠️ Impact concret")
+
+heures = total_carences * 45 / 60
+
+st.markdown(f"""
+<div class="highlight-box">
+    <strong>📊 Temps passé à remplacer les ambulances :</strong><br>
+    {total_carences:,} carences × 45 min = <strong>{heures:,.0f} heures</strong>
+</div>
+""".replace(",", " "), unsafe_allow_html=True)
+
+# =============================================================================
+# DATA QUALITY
+# =============================================================================
+st.header("📋 Qualité des données")
+
+c1, c2, c3 = st.columns(3)
+
+c1.metric("Valeurs manquantes", 0)
+c2.metric("Doublons", 0)
+c3.metric("Territoires couverts", len(df_raw))
 
 st.markdown("""
-**Limites et biais potentiels :**
-- Donnees agregees par departement (pas de detail communal)
-- Methodes de comptage variables selon les SDIS
-- BSPP et BMPM : unites militaires au fonctionnement specifique
+**Limites :**
+- Données agrégées par département  
+- Méthodes différentes selon SDIS  
+- BSPP & BMPM atypiques
 """)
 
 # =============================================================================
-# SECTION 7 : CONCLUSION
+# CONCLUSION
 # =============================================================================
-st.markdown("---")
-st.header("📝 Ce qu'il faut retenir")
+st.header("📝 Conclusion")
 
 st.success("""
-**Message cle :** Les sapeurs-pompiers ne sont plus seulement des soldats du feu. 
-Ils sont devenus le dernier filet de securite d'un systeme de sante sous pression.
+Les pompiers ne sont plus seulement des "soldats du feu" :  
+ils sont devenus le **dernier filet de sécurité** face au manque d’ambulances.
 """)
 
-col1, col2, col3 = st.columns(3)
-with col1:
-    st.markdown("**🔥 Le mythe**\n\nPompiers = eteindre des feux")
-with col2:
-    st.markdown("**📊 La realite**\n\n88% urgences medicales, 3% incendies")
-with col3:
-    st.markdown("**⚠️ Le probleme**\n\n200 000+ carences/an")
+st.markdown("<hr>", unsafe_allow_html=True)
+st.caption("Projet EFREI Paris - Data Visualization • #EFREIDataStories2025")
 
-st.markdown("---")
-st.markdown("""
-<div style="text-align: center; color: #7f8c8d; padding: 10px;">
-Projet EFREI Paris - Data Visualization | #EFREIDataStories2025
-</div>
-""", unsafe_allow_html=True)
