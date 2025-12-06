@@ -1,45 +1,62 @@
-# Les Pompiers en France - 2023
+# Interventions des Sapeurs-Pompiers en France (2023)
 
-Quand on pense aux pompiers, on imagine des camions rouges qui foncent eteindre des incendies. 
-En vrai ? En 2023, seulement 3% de leurs interventions concernent des feux. Le reste, c'est surtout des urgences medicales.
+Dashboard interactif analysant les 4.7 millions d'interventions des pompiers francais en 2023.
 
-Et le truc fou : plus de 200 000 fois dans l'annee, ils sont intervenus juste parce qu'aucune ambulance n'etait dispo. Ca s'appelle une "carence".
+## Contexte et problematique
 
-Ce dashboard explore ca.
+On associe souvent les pompiers a la lutte contre les incendies. Pourtant, les donnees revelent une realite differente : en 2023, seulement 3% des interventions concernaient des feux. La grande majorite (88%) etait des urgences medicales.
 
-## Le projet
+Plus revelateur encore : le phenomene des "carences", ces interventions ou les pompiers remplacent les ambulances indisponibles. Plus de 200 000 cas en 2023, un indicateur de tension du systeme de sante.
 
-C'est un dashboard Streamlit qui raconte une histoire simple :
-- On croit que les pompiers eteignent des feux
-- En fait ils font surtout des urgences medicales
-- Et souvent ils remplacent les ambulances qui manquent
-- C'est un signe que le systeme de sante est sous tension
+## Structure narrative
 
-## Lancer l'app
+Le dashboard suit une progression claire :
 
-```
+1. **Constat initial** : Decalage entre perception et realite du metier
+2. **Analyse des donnees** : Repartition des types d'interventions
+3. **Focus sur les carences** : Le role de substitution des pompiers
+4. **Dimension geographique** : Disparites regionales
+5. **Implications** : Consequences pour les pompiers et les citoyens
+
+## Fonctionnalites
+
+- Filtres interactifs par region, type de territoire et categorie de SDIS
+- KPIs dynamiques qui s'adaptent aux filtres selectionnes
+- 4 visualisations interactives (Plotly)
+- Section qualite des donnees avec documentation des limites
+
+## Installation
+
+```bash
 pip install -r requirements.txt
 streamlit run app.py
 ```
 
-Faut que le fichier `interventions2023.csv` soit dans le meme dossier.
+Le fichier `interventions2023.csv` doit etre present dans le repertoire racine.
 
-## Les donnees
+## Source des donnees
 
-Ca vient de data.gouv.fr, c'est les stats officielles du Ministere de l'Interieur sur toutes les interventions des pompiers en 2023.
+**Dataset** : Interventions realisees par les services d'incendie et de secours  
+**Editeur** : Ministere de l'Interieur - DGSCGC  
+**Annee** : 2023  
+**Licence** : Licence Ouverte / Open Licence  
+**Lien** : [data.gouv.fr](https://www.data.gouv.fr/datasets/interventions-realisees-par-les-services-d-incendie-et-de-secours/)
 
-Lien : https://www.data.gouv.fr/datasets/interventions-realisees-par-les-services-d-incendie-et-de-secours/
+## Technologies
 
-## Ce qu'il y a dans le dashboard
+- Python 3.10+
+- Streamlit
+- Pandas
+- Plotly
+- NumPy
 
-- Des filtres pour explorer par region ou type de territoire
-- Les chiffres cles qui changent selon les filtres
-- Un graphique sur la repartition des interventions
-- Une analyse des carences (quand les pompiers remplacent les ambulances)
-- Une comparaison entre regions
-- Une section sur la qualite des donnees
+## Limites identifiees
+
+- Donnees agregees au niveau departemental uniquement
+- Methodes de comptage potentiellement variables selon les SDIS
+- BSPP et BMPM : unites militaires au fonctionnement specifique
 
 ---
 
-EFREI Paris - Data Visualization  
+Projet realise dans le cadre du cours de Data Visualization - EFREI Paris  
 #EFREIDataStories2025
