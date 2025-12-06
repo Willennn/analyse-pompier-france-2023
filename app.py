@@ -163,6 +163,22 @@ st.sidebar.markdown("""
 Ministere de l'Interieur - 2023
 """)
 
+<style>
+    /* Force la couleur du texte dans les boîtes */
+    .highlight-box, .highlight-box * {
+        color: #000 !important;
+    }
+    .insight-box, .insight-box * {
+        color: #000 !important;
+    }
+
+    /* Fix global text inside custom boxes                        */
+    .white-box, .white-box * {
+        color: #000 !important;
+    }
+</style>
+
+
 # =============================================================================
 # HEADER
 # =============================================================================
