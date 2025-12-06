@@ -1,8 +1,3 @@
-"""
-app.py - Dashboard Interventions Pompiers France (2023)
-Version robuste : accès aux colonnes EXACTES que tu as fournies.
-Multipage-like (top nav) + filtres à gauche + carte choropleth.
-"""
 
 import streamlit as st
 import pandas as pd
