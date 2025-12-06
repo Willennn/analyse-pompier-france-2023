@@ -1,108 +1,159 @@
+"""
+app.py - Dashboard Interventions Pompiers France (2023)
+Version robuste : accès aux colonnes EXACTES que tu as fournies.
+Multipage-like (top nav) + filtres à gauche + carte choropleth.
+"""
+
 import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
-import json
+import plotly.graph_objects as go
 import requests
+import json
 import os
+import re
 
-# -------------------------------------------------------------------
-# CONFIG
-# -------------------------------------------------------------------
+# -----------------------
+# Config page
+# -----------------------
 st.set_page_config(page_title="Pompiers France 2023", layout="wide")
 
-# -------------------------------------------------------------------
-# LOAD DATA
-# -------------------------------------------------------------------
+# -----------------------
+# Util: safe column resolver
+# -----------------------
+def col_exists(df, name_variants):
+    """Return the first existing column name found in df from name_variants list, else None."""
+    cols = df.columns.tolist()
+    for v in name_variants:
+        if v in cols:
+            return v
+    # try case/accents-insensitive match
+    cols_norm = {re.sub(r'\W+', '', c).lower(): c for c in cols}
+    for v in name_variants:
+        key = re.sub(r'\W+', '', v).lower()
+        if key in cols_norm:
+            return cols_norm[key]
+    return None
+
+# -----------------------
+# Load data (robust)
+# -----------------------
 @st.cache_data
-def load_data():
-    df = pd.read_csv("interventions2023.csv", sep=";", encoding="latin-1")
+def load_data(path="interventions2023.csv"):
+    # try common encodings
+    for enc in ("latin-1", "utf-8", "cp1252"):
+        try:
+            df = pd.read_csv(path, sep=";", encoding=enc)
+            break
+        except Exception:
+            df = None
+    if df is None:
+        raise RuntimeError(f"Impossible de lire {path} avec encodages courants.")
 
-    # Renommage des colonnes critiques pour simplifier le code
-    df = df.rename(columns={
-        "Année": "Annee",
-        "Zone": "Zone",
-        "Région": "Region",
-        "Numéro": "Numero",
-        "Département": "Departement",
-        "Catégorie A": "Categorie",
+    # Strip column names whitespace
+    df.columns = [c.strip() for c in df.columns]
 
-        "Incendies": "Incendies",
-        "Secours à victime": "Secours_victime",
-        "Secours à personne": "Secours_personne",
+    # --- Map the exact columns you provided to normalized keys ---
+    mapping = {
+        # basics (exact names as provided)
+        "Annee": col_exists(df, ["Année", "Annee"]),
+        "Zone": col_exists(df, ["Zone"]),
+        "Region": col_exists(df, ["Région", "Region"]),
+        "Numero": col_exists(df, ["Numéro", "Numero"]),
+        "Departement": col_exists(df, ["Département", "Departement"]),
+        "Categorie_A": col_exists(df, ["Catégorie A", "Catégorie", "Categorie", "Catégorie_A"]),
+        # main numeric columns (use the long exact names you listed)
+        "Feux_habitations": col_exists(df, ["Feux d'habitations-bureaux", "Feux d'habitations bureaux", "Feux_habitations"]),
+        "Incendies": col_exists(df, ["Incendies"]),
+        "Secours_victime": col_exists(df, ["Secours à victime", "Secours à victime", "Secours_victime"]),
+        "Secours_personne": col_exists(df, ["Secours à personne", "Secours_personne"]),
+        "Malaises_Urgence": col_exists(df, ["Malaises à domicile : urgence vitale", "Malaises à domicile : urgence vitale", "Malaises_Urgence"]),
+        "Malaises_Carence": col_exists(df, ["Malaises à domicile : carence", "Malaises à domicile : carence", "Malaises_Carence"]),
+        "Accidents_circulation": col_exists(df, ["Accidents de circulation", "Accidents de circulation", "Accidents_circulation"]),
+        "Operations_diverses": col_exists(df, ["Opérations diverses", "Operations diverses", "Operations_diverses"]),
+        "Total_interventions": col_exists(df, ["Total interventions", "Total_interventions"])
+    }
 
-        "Malaises à domicile : urgence vitale": "Malaises_Urgence",
-        "Malaises à domicile : carence": "Malaises_Carence",
+    # For any mapped None -> create a column with zeros (to avoid KeyError later)
+    for norm_key, found in mapping.items():
+        if found is None:
+            df[norm_key] = 0
+            mapping[norm_key] = norm_key  # point to created column
+        else:
+            # rename the real column to the normalized key if names differ
+            if found != norm_key:
+                df = df.rename(columns={found: norm_key})
+                mapping[norm_key] = norm_key
 
-        "Accidents de circulation": "Accidents_circulation",
-        "Opérations diverses": "Operations_diverses",
-        "Total interventions": "Total_interventions"
-    })
+    # Ensure numeric columns are numeric
+    numeric_cols = ["Feux_habitations", "Incendies", "Secours_victime", "Secours_personne",
+                    "Malaises_Urgence", "Malaises_Carence", "Accidents_circulation",
+                    "Operations_diverses", "Total_interventions"]
+    for c in numeric_cols:
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0)
+        else:
+            df[c] = 0
 
-    # Convertir en numérique proprement
-    cols_num = [
-        "Incendies","Secours_victime","Secours_personne",
-        "Malaises_Urgence","Malaises_Carence",
-        "Accidents_circulation","Operations_diverses","Total_interventions"
-    ]
-
-    for c in cols_num:
-        df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0)
-
-    # Ajout variables propres
+    # Derived
     df["Total_Malaises"] = df["Malaises_Urgence"] + df["Malaises_Carence"]
 
-    # Type de zone (simple)
-    def zone_type(row):
-        if row["Numero"] == "BSPP": return "BSPP (Paris)"
-        if row["Numero"] == "BMPM": return "BMPM (Marseille)"
-        return "Métropole"
+    # Ensure text columns exist
+    for txt in ["Region", "Departement", "Categorie_A", "Zone", "Numero"]:
+        if txt not in df.columns:
+            df[txt] = ""
 
-    df["Type_Zone"] = df.apply(zone_type, axis=1)
+    # Normalize departement codes as strings (for mapping)
+    if "Departement" in df.columns:
+        df["Departement_str"] = df["Departement"].astype(str).str.extract(r"(\d+)").fillna("")
+    else:
+        df["Departement_str"] = ""
 
     return df
 
+# Load
 df_raw = load_data()
 
-# -------------------------------------------------------------------
-# SIDEBAR FILTERS
-# -------------------------------------------------------------------
+# -----------------------
+# Sidebar filters
+# -----------------------
 st.sidebar.title("Filtres")
+regions = ["Toutes"] + sorted(df_raw["Region"].replace("", "Non renseignée").unique().tolist())
+sel_region = st.sidebar.selectbox("Région", regions)
 
-regions = ["Toutes"] + sorted(df_raw["Region"].unique())
-reg = st.sidebar.selectbox("Région", regions)
+types_zone = ["Tous"] + sorted(df_raw["Zone"].replace("", "Non renseignée").unique().tolist())
+sel_zone = st.sidebar.selectbox("Zone", types_zone)
 
-zones = ["Tous"] + sorted(df_raw["Type_Zone"].unique())
-z_type = st.sidebar.selectbox("Type de zone", zones)
+cats = ["Toutes"] + sorted(df_raw["Categorie_A"].replace("", "Non renseignée").unique().tolist())
+sel_cat = st.sidebar.selectbox("Catégorie", cats)
 
-cats = ["Toutes"] + sorted(df_raw["Categorie"].unique())
-cat = st.sidebar.selectbox("Catégorie", cats)
-
+# Apply filters
 df = df_raw.copy()
-if reg != "Toutes":
-    df = df[df["Region"] == reg]
-if z_type != "Tous":
-    df = df[df["Type_Zone"] == z_type]
-if cat != "Toutes":
-    df = df[df["Categorie"] == cat]
+if sel_region != "Toutes":
+    df = df[df["Region"].fillna("Non renseignée") == sel_region]
+if sel_zone != "Tous":
+    df = df[df["Zone"].fillna("Non renseignée") == sel_zone]
+if sel_cat != "Toutes":
+    df = df[df["Categorie_A"].fillna("Non renseignée") == sel_cat]
 
-# -------------------------------------------------------------------
-# TOP NAV (MULTIPAGE SANS PAGES)
-# -------------------------------------------------------------------
+# -----------------------
+# Top nav (multipage-like)
+# -----------------------
 PAGES = ["Overview", "Interventions", "Carences", "Carte", "Conclusion"]
 if "page" not in st.session_state:
     st.session_state.page = "Overview"
 
-col1, col2, col3, col4, col5 = st.columns(5)
-for c, p in zip([col1, col2, col3, col4, col5], PAGES):
-    if c.button(p):
+cols = st.columns(len(PAGES))
+for i, p in enumerate(PAGES):
+    if cols[i].button(p):
         st.session_state.page = p
 
-st.write("---")
+st.markdown("---")
 
-# -------------------------------------------------------------------
-# KPIs COMMUNS
-# -------------------------------------------------------------------
+# -----------------------
+# Common metrics (bounded)
+# -----------------------
 total_inter = df["Total_interventions"].sum()
 incendies = df["Incendies"].sum()
 sav = df["Secours_victime"].sum()
@@ -110,115 +161,116 @@ sap = df["Secours_personne"].sum()
 mal = df["Total_Malaises"].sum()
 car = df["Malaises_Carence"].sum()
 
-pct_medical = min(100, (sav + sap) / max(total_inter, 1) * 100)
-pct_incendies = min(100, incendies / max(total_inter, 1) * 100)
-pct_car = min(100, car / max(mal, 1) * 100)
+def pct(n, d):
+    return float(min(100, (n / max(d, 1)) * 100))
 
-# -------------------------------------------------------------------
-# PAGE - OVERVIEW
-# -------------------------------------------------------------------
+pct_medical = pct(sav + sap, total_inter)
+pct_incendies = pct(incendies, total_inter)
+pct_car = pct(car, mal if mal>0 else 1)
+
+# -----------------------
+# Pages
+# -----------------------
 if st.session_state.page == "Overview":
     st.header("Vue d'ensemble")
-
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Interventions", f"{total_inter:,.0f}".replace(",", " "))
-    c2.metric("Part médicale", f"{pct_medical:.0f}%")
-    c3.metric("Part incendies", f"{pct_incendies:.1f}%")
-    c4.metric("Taux carences", f"{pct_car:.0f}%")
+    c1.metric("Total interventions", f"{int(total_inter):,}".replace(",", " "))
+    c2.metric("Urgences médicales", f"{pct_medical:.0f}%")
+    c3.metric("Incendies", f"{pct_incendies:.1f}%")
+    c4.metric("Taux de carences", f"{pct_car:.0f}%")
 
-    st.subheader("Répartition générale")
-    values = {
+    st.markdown("---")
+    st.subheader("Répartition principale")
+    vals = {
         "Secours à victime": sav,
         "Secours à personne": sap,
         "Incendies": incendies,
-        "Accidents circulation": df["Accidents_circulation"].sum(),
+        "Accidents de circulation": df["Accidents_circulation"].sum(),
         "Opérations diverses": df["Operations_diverses"].sum()
     }
-
-    fig = px.pie(
-        names=list(values.keys()),
-        values=list(values.values()),
-        hole=0.4,
-        color_discrete_sequence=px.colors.sequential.Reds
-    )
+    fig = px.pie(values=list(vals.values()), names=list(vals.keys()), hole=0.45,
+                 color_discrete_sequence=px.colors.sequential.Reds)
+    fig.update_traces(textinfo="percent+label", textposition="outside")
     st.plotly_chart(fig, use_container_width=True)
 
-# -------------------------------------------------------------------
-# PAGE - INTERVENTIONS
-# -------------------------------------------------------------------
 elif st.session_state.page == "Interventions":
-    st.header("Analyse des interventions")
-
+    st.header("Interventions — Top & tendances")
     st.subheader("Top départements")
-    metric = st.selectbox("Métrique", [
+    metric = st.selectbox("Choisir métrique", [
+        ("Total interventions", "Total_interventions"),
         ("Incendies", "Incendies"),
         ("Secours victime", "Secours_victime"),
-        ("Secours personne", "Secours_personne"),
-        ("Interventions totales", "Total_interventions"),
+        ("Secours personne", "Secours_personne")
     ], format_func=lambda x: x[0])
-
     metric_key = metric[1]
-    top = df.groupby("Departement")[metric_key].sum().reset_index().nlargest(10, metric_key)
-
-    fig = px.bar(top, x=metric_key, y="Departement", orientation="h", color=metric_key,
-                 color_continuous_scale="Reds")
+    topn = st.slider("Top N", 5, 20, 10)
+    top_df = df.groupby("Departement").agg({metric_key: "sum"}).reset_index().nlargest(topn, metric_key)
+    fig = px.bar(top_df, x=metric_key, y="Departement", orientation="h", color=metric_key, color_continuous_scale="Reds")
     st.plotly_chart(fig, use_container_width=True)
 
-# -------------------------------------------------------------------
-# PAGE - CARENCES
-# -------------------------------------------------------------------
 elif st.session_state.page == "Carences":
     st.header("Carences ambulancières")
-
-    c1, c2 = st.columns([2,1])
-
-    with c1:
-        fig = px.bar(
-            x=["Urgence vitale", "Carence"],
-            y=[df["Malaises_Urgence"].sum(), df["Malaises_Carence"].sum()],
-            color=["Urgence vitale", "Carence"],
-            color_discrete_sequence=["#3498db", "#e74c3c"]
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-    with c2:
-        st.metric("Taux carences", f"{pct_car:.0f}%")
-        st.metric("Carences totales", f"{int(car):,}".replace(",", " "))
-
-# -------------------------------------------------------------------
-# PAGE - CARTE
-# -------------------------------------------------------------------
-elif st.session_state.page == "Carte":
-    st.header("Carte choroplèthe — Taux de carences")
-
-    # charger geojson france
-    url = "https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-version-simplifiee.geojson"
-    r = requests.get(url)
-    geojson = r.json()
-
-    # extraction code département
-    df_map = df_raw.copy()
-    df_map["dept"] = df_map["Departement"].astype(str).str.extract(r"(\d+)")
-    df_map = df_map.groupby("dept")[["Malaises_Carence","Total_Malaises"]].sum().reset_index()
-    df_map["taux"] = (df_map["Malaises_Carence"] / df_map["Total_Malaises"].replace(0, np.nan) * 100).fillna(0)
-
-    fig = px.choropleth(
-        df_map,
-        geojson=geojson,
-        locations="dept",
-        featureidkey="properties.code",
-        color="taux",
-        color_continuous_scale="Reds"
-    )
-    fig.update_geos(fitbounds="locations", visible=False)
+    st.subheader("Urgences vs Carences")
+    fig = go.Figure()
+    fig.add_trace(go.Bar(x=["Urgence vitale", "Carence"], y=[df["Malaises_Urgence"].sum(), df["Malaises_Carence"].sum()],
+                         marker_color=["#3498db", "#e74c3c"]))
+    fig.update_layout(yaxis_title="Nombre")
     st.plotly_chart(fig, use_container_width=True)
 
-# -------------------------------------------------------------------
-# PAGE - CONCLUSION
-# -------------------------------------------------------------------
+    st.markdown("---")
+    st.subheader("Taux de carences par région")
+    reg_df = df_raw.groupby("Region").agg({"Malaises_Carence":"sum","Total_Malaises":"sum"}).reset_index()
+    reg_df["Taux"] = (reg_df["Malaises_Carence"] / reg_df["Total_Malaises"].replace(0, np.nan) * 100).fillna(0)
+    reg_df = reg_df.sort_values("Taux", ascending=False)
+    fig2 = px.bar(reg_df.head(20), x="Taux", y="Region", orientation="h", color="Taux", color_continuous_scale="Reds")
+    st.plotly_chart(fig2, use_container_width=True)
+
+elif st.session_state.page == "Carte":
+    st.header("Carte choroplèthe — départements")
+    # try local geojson first
+    geojson = None
+    if os.path.exists("departements.geojson"):
+        with open("departements.geojson", "r", encoding="utf-8") as f:
+            geojson = json.load(f)
+    else:
+        # try fetch simplified geojson
+        try:
+            url = "https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-version-simplifiee.geojson"
+            r = requests.get(url, timeout=8)
+            if r.status_code == 200:
+                geojson = r.json()
+        except Exception:
+            geojson = None
+
+    if geojson is None:
+        st.info("GeoJSON non disponible. Ajoute 'departements.geojson' au dossier de l'app pour afficher la carte.")
+    else:
+        # prepare mapping by dept code
+        df_map = df_raw.copy()
+        df_map["dept"] = df_map["Departement"].astype(str).str.extract(r"(\d+)").fillna("")
+        agg = df_map.groupby("dept").agg({"Malaises_Carence":"sum","Total_Malaises":"sum"}).reset_index()
+        agg["taux"] = (agg["Malaises_Carence"] / agg["Total_Malaises"].replace(0, np.nan) * 100).fillna(0)
+        # attempt common feature key names
+        feature_keys = ["properties.code", "properties.code_insee", "properties.Code", "id"]
+        plotted = False
+        for fk in ["properties.code", "properties.code_insee", "id"]:
+            try:
+                fig = px.choropleth(agg, geojson=geojson, locations="dept", color="taux",
+                                    featureidkey=fk, color_continuous_scale="Reds")
+                fig.update_geos(fitbounds="locations", visible=False)
+                fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, height=700)
+                st.plotly_chart(fig, use_container_width=True)
+                plotted = True
+                break
+            except Exception:
+                continue
+        if not plotted:
+            st.error("Impossible d'aligner les codes département du GeoJSON et vos données. Vérifiez 'properties.code' ou 'properties.code_insee' du GeoJSON.")
+
 elif st.session_state.page == "Conclusion":
     st.header("Conclusion")
-    st.write(
-        "Ce tableau de bord présente une vision claire et synthétique "
-        "des interventions des sapeurs-pompiers en France en 2023."
-    )
+    st.write("Dashboard prêt. Pour améliorer : ajouter geojson local, données ambulances, et horaires de garde.")
+
+# Footer
+st.markdown("---")
+st.caption("Projet EFREI - Pompiers France 2023")
