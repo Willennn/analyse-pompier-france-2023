@@ -104,6 +104,12 @@ def load_data(path="interventions2023.csv"):
         df["Departement_str"] = df["Departement"].astype(str).str.extract(r"(\d+)").fillna("")
     else:
         df["Departement_str"] = ""
+# Ensure text columns exist and are strings (post-processing)
+for txt in ["Region", "Departement", "Categorie_A", "Zone", "Numero"]:
+    if txt in df.columns:
+        df[txt] = df[txt].astype(str).str.strip().replace({"nan": "", "None": "", "NoneType": ""})
+    else:
+        df[txt] = ""
 
     return df
 
@@ -111,26 +117,57 @@ def load_data(path="interventions2023.csv"):
 df_raw = load_data()
 
 # -----------------------
-# Sidebar filters
+# Sidebar filters (robuste)
 # -----------------------
 st.sidebar.title("Filtres")
-regions = ["Toutes"] + sorted(df_raw["Region"].replace("", "Non renseignée").unique().tolist())
+
+# helper to get column or fallback
+def resolve_col(df, variants, fallback=None):
+    col = col_exists(df, variants)
+    return col if col is not None else fallback
+
+# Resolve actual column names (whatever the CSV contient)
+col_region = resolve_col(df_raw, ["Région", "Region", "region", "REGION"])
+col_zone = resolve_col(df_raw, ["Zone", "zone"])
+col_cat = resolve_col(df_raw, ["Catégorie A", "Catégorie", "Categorie", "Categorie_A", "Catégorie_A"])
+
+# Ensure these columns exist and are strings (safe normalization)
+for c in (col_region, col_zone, col_cat):
+    if c is not None and c in df_raw.columns:
+        # cast to str, strip, replace common null-like values with empty string
+        df_raw[c] = df_raw[c].astype(str).str.strip().replace({"nan": "", "None": "", "NoneType": ""})
+    # if not present, create an empty string column so later code doesn't crash
+    elif c is not None:
+        df_raw[c] = ""
+
+# Build filter lists, using the resolved column names (or safe defaults)
+if col_region:
+    regions = ["Toutes"] + sorted(df_raw[col_region].replace("", "Non renseignée").unique().tolist())
+else:
+    regions = ["Toutes"]
 sel_region = st.sidebar.selectbox("Région", regions)
 
-types_zone = ["Tous"] + sorted(df_raw["Zone"].replace("", "Non renseignée").unique().tolist())
+if col_zone:
+    types_zone = ["Tous"] + sorted(df_raw[col_zone].replace("", "Non renseignée").unique().tolist())
+else:
+    types_zone = ["Tous"]
 sel_zone = st.sidebar.selectbox("Zone", types_zone)
 
-cats = ["Toutes"] + sorted(df_raw["Categorie_A"].replace("", "Non renseignée").unique().tolist())
+if col_cat:
+    cats = ["Toutes"] + sorted(df_raw[col_cat].replace("", "Non renseignée").unique().tolist())
+else:
+    cats = ["Toutes"]
 sel_cat = st.sidebar.selectbox("Catégorie", cats)
 
-# Apply filters
+# Apply filters (use resolved column names if present)
 df = df_raw.copy()
-if sel_region != "Toutes":
-    df = df[df["Region"].fillna("Non renseignée") == sel_region]
-if sel_zone != "Tous":
-    df = df[df["Zone"].fillna("Non renseignée") == sel_zone]
-if sel_cat != "Toutes":
-    df = df[df["Categorie_A"].fillna("Non renseignée") == sel_cat]
+if col_region and sel_region != "Toutes":
+    df = df[df[col_region].fillna("Non renseignée") == sel_region]
+if col_zone and sel_zone != "Tous":
+    df = df[df[col_zone].fillna("Non renseignée") == sel_zone]
+# Category selection: note we compare with resolved column
+if col_cat and sel_cat != "Toutes":
+    df = df[df[col_cat].fillna("Non renseignée") == sel_cat]
 
 # -----------------------
 # Top nav (multipage-like)
