@@ -28,15 +28,25 @@ st.markdown("""
         margin: 1rem 0;
         border-radius: 5px;
     }
-    .insight-box, .insight-box p, .insight-box strong, .insight-box * {
+    .insight-box, .insight-box p, .insight-box strong, .insight-box *, .insight-box span {
         color: #000000 !important;
     }
-    /* Fix texte dans les boxes Streamlit */
-    div[data-testid="stAlert"] *, 
-    div[data-testid="stInfo"] *, 
-    div[data-testid="stSuccess"] *, 
-    div[data-testid="stWarning"] *,
-    .stAlert *, .stInfo *, .stSuccess *, .stWarning * {
+    /* FORCE BRUTALE pour les boxes Streamlit */
+    [data-testid="stMarkdownContainer"] [data-testid="stAlert"] *,
+    [data-testid="stMarkdownContainer"] [data-testid="stInfo"] *,
+    [data-testid="stMarkdownContainer"] [data-testid="stSuccess"] *,
+    [data-testid="stMarkdownContainer"] [data-testid="stWarning"] *,
+    div[data-baseweb="notification"] *,
+    .stAlert, .stAlert *, 
+    .stInfo, .stInfo *, 
+    .stSuccess, .stSuccess *, 
+    .stWarning, .stWarning *,
+    .st-emotion-cache-1wmy9hl, .st-emotion-cache-1wmy9hl *,
+    div[role="alert"], div[role="alert"] * {
+        color: #000000 !important;
+    }
+    /* Override Streamlit info/success boxes */
+    .stAlert > div, .stInfo > div, .stSuccess > div, .stWarning > div {
         color: #000000 !important;
     }
     /* CORRECTION: Texte visible sur fond sombre */
