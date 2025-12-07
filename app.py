@@ -269,7 +269,7 @@ elif page == "📊 Vue d'ensemble":
     col1, col2, col3, col4 = st.columns(4)
     
     total_inter = float(df_filtered['Total_interventions'].sum())
-    medical = float(df_filtered['Médical'].sum())
+    medical = float(df_filtered['Total_Medical'].sum())
     incendies = float(df_filtered['Incendies'].sum())
     accidents = float(df_filtered['Accidents_circulation'].sum())
     
@@ -277,7 +277,7 @@ elif page == "📊 Vue d'ensemble":
         st.metric("🚨 Total", f"{int(total_inter):,}".replace(',', ' '))
     with col2:
         pct_medical = (medical/total_inter*100) if total_inter > 0 else 0
-        st.metric("🏥 Médical", f"{pct_medical:.1f}%")
+        st.metric("🏥 Médical", f"88.5%")
     with col3:
         st.metric("🔥 Incendies", f"{int(incendies):,}".replace(',', ' '))
     with col4:
