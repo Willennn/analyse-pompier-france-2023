@@ -252,7 +252,7 @@ if page == "🏠 Contexte":
             st.metric("🏥 Part médical", f"{(total_medical/total_interventions*100):.1f}%")
             st.metric("🔥 Incendies", f"{int(total_incendies/1000):.0f}K")
         
-        st.info("💡 Les pompiers sont avant tout un service médical (70%+ des interventions)")
+        st.markdown("**💡 Les pompiers sont avant tout un service médical (70%+ des interventions)**")
     
     st.markdown("---")
     st.markdown("## 📚 Source des données")
@@ -381,7 +381,8 @@ elif page == "📊 Vue d'ensemble":
         
         st.plotly_chart(fig_bar, use_container_width=True)
     
-    st.markdown('<div class="insight-box"><strong>💡 Insight</strong> : Les départements peuplés concentrent les interventions médicales.</div>', unsafe_allow_html=True)
+    st.markdown("---")
+    st.markdown("**💡 Insight** : Les départements peuplés concentrent les interventions médicales.")
 
 elif page == "🚑 Urgences médicales":
     st.markdown('<h1 class="main-header">🚑 Urgences médicales</h1>', unsafe_allow_html=True)
@@ -499,7 +500,8 @@ elif page == "🚑 Urgences médicales":
         )
         st.plotly_chart(fig_carence, use_container_width=True)
     
-    st.markdown('<div class="insight-box"><strong>💡 Insight</strong> : Taux de carence élevé = surcharge du système.</div>', unsafe_allow_html=True)
+    st.markdown("---")
+    st.markdown("**💡 Insight** : Taux de carence élevé = surcharge du système.")
 
 elif page == "🔥 Incendies":
     st.markdown('<h1 class="main-header">🔥 Incendies</h1>', unsafe_allow_html=True)
@@ -571,7 +573,8 @@ elif page == "🔥 Incendies":
             )
             st.plotly_chart(fig_types, use_container_width=True)
     
-    st.markdown('<div class="insight-box"><strong>💡</strong> 7% des interventions mais ressources importantes.</div>', unsafe_allow_html=True)
+    st.markdown("---")
+    st.markdown("**💡 Insight** : 7% des interventions mais ressources importantes.")
 
 elif page == "🗺️ Analyse géographique":
     st.markdown('<h1 class="main-header">🗺️ Analyse géographique</h1>', unsafe_allow_html=True)
