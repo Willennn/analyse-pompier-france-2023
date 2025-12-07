@@ -27,9 +27,15 @@ st.markdown("""
         padding: 1rem;
         margin: 1rem 0;
         border-radius: 5px;
+    }
+    .insight-box, .insight-box p, .insight-box strong {
         color: #000000 !important;
     }
-    .insight-box p, .insight-box strong {
+    /* Fix texte blanc sur blanc dans info/success boxes */
+    .stAlert, .stInfo, .stSuccess, .stWarning {
+        color: #000000 !important;
+    }
+    .stAlert p, .stInfo p, .stSuccess p, .stWarning p {
         color: #000000 !important;
     }
     /* CORRECTION: Texte visible sur fond sombre */
@@ -232,7 +238,7 @@ if page == "🏠 Contexte":
         
         if total_interventions > 0:
             st.metric("🚨 Interventions", f"{total_interventions/1_000_000:.2f}M")
-            st.metric("🏥 Part médical", f"84.2%")
+            st.metric("🏥 Part médical", f"{(total_medical/total_interventions*100):.1f}%")
             st.metric("🔥 Incendies", f"{int(total_incendies/1000):.0f}K")
         
         st.info("💡 Les pompiers sont avant tout un service médical (70%+ des interventions)")
@@ -310,8 +316,13 @@ elif page == "📊 Vue d'ensemble":
     
     with col2:
         st.markdown("### 🔢 Détails")
+        
+        # Calculer le total des catégories affichées pour avoir des % cohérents
+        total_categories = sum(categories_data.values())
+        
         for cat, val in categories_data.items():
-            pct = (val / total_inter * 100) if total_inter > 0 else 0
+            # Pourcentage basé sur le total des catégories (comme dans le graphique)
+            pct = (val / total_categories * 100) if total_categories > 0 else 0
             st.markdown(f"""
             <div style="background-color: #2c3e50; padding: 10px; margin: 5px 0; border-radius: 5px;">
                 <strong style="color: #ecf0f1;">{cat}</strong><br>
@@ -319,6 +330,15 @@ elif page == "📊 Vue d'ensemble":
                 <span style="color: #bdc3c7;"> ({pct:.1f}%)</span>
             </div>
             """.replace(',', ' '), unsafe_allow_html=True)
+        
+        # Vérification totale
+        st.markdown(f"""
+        <div style="background-color: #34495e; padding: 10px; margin: 10px 0; border-radius: 5px; border-top: 2px solid #e74c3c;">
+            <strong style="color: #ecf0f1;">TOTAL</strong><br>
+            <span style="font-size: 1.1rem; color: #ecf0f1;">{int(total_categories):,}</span>
+            <span style="color: #bdc3c7;"> (100%)</span>
+        </div>
+        """.replace(',', ' '), unsafe_allow_html=True)
     
     st.markdown("---")
     st.markdown("### 🏆 Top 15 départements")
@@ -858,5 +878,6 @@ st.markdown("""
     <p><strong>🎓 Projet EFREI Paris - Data Visualization & Analysis</strong></p>
     <p>Réalisé par <strong>Willen CHIBOUT</strong></p>
     <p>Données : Ministère de l'Intérieur | data.gouv.fr</p>
+    <p style="font-size: 0.9rem;">Dashboard créé avec ❤️ et Streamlit | © 2025</p>
 </div>
 """, unsafe_allow_html=True)
