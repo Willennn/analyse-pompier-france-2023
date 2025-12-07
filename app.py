@@ -28,14 +28,15 @@ st.markdown("""
         margin: 1rem 0;
         border-radius: 5px;
     }
-    .insight-box, .insight-box p, .insight-box strong {
+    .insight-box, .insight-box p, .insight-box strong, .insight-box * {
         color: #000000 !important;
     }
-    /* Fix texte blanc sur blanc dans info/success boxes */
-    .stAlert, .stInfo, .stSuccess, .stWarning {
-        color: #000000 !important;
-    }
-    .stAlert p, .stInfo p, .stSuccess p, .stWarning p {
+    /* Fix texte dans les boxes Streamlit */
+    div[data-testid="stAlert"] *, 
+    div[data-testid="stInfo"] *, 
+    div[data-testid="stSuccess"] *, 
+    div[data-testid="stWarning"] *,
+    .stAlert *, .stInfo *, .stSuccess *, .stWarning * {
         color: #000000 !important;
     }
     /* CORRECTION: Texte visible sur fond sombre */
@@ -238,7 +239,7 @@ if page == "🏠 Contexte":
         
         if total_interventions > 0:
             st.metric("🚨 Interventions", f"{total_interventions/1_000_000:.2f}M")
-            st.metric("🏥 Part médical", f"88.5%")
+            st.metric("🏥 Part médical", f"{(total_medical/total_interventions*100):.1f}%")
             st.metric("🔥 Incendies", f"{int(total_incendies/1000):.0f}K")
         
         st.info("💡 Les pompiers sont avant tout un service médical (70%+ des interventions)")
@@ -266,7 +267,7 @@ elif page == "📊 Vue d'ensemble":
         st.metric("🚨 Total", f"{int(total_inter):,}".replace(',', ' '))
     with col2:
         pct_medical = (medical/total_inter*100) if total_inter > 0 else 0
-        st.metric("🏥 Médical", f"88.5%")
+        st.metric("🏥 Médical", f"{pct_medical:.1f}%")
     with col3:
         st.metric("🔥 Incendies", f"{int(incendies):,}".replace(',', ' '))
     with col4:
@@ -330,15 +331,6 @@ elif page == "📊 Vue d'ensemble":
                 <span style="color: #bdc3c7;"> ({pct:.1f}%)</span>
             </div>
             """.replace(',', ' '), unsafe_allow_html=True)
-        
-        # Vérification totale
-        st.markdown(f"""
-        <div style="background-color: #34495e; padding: 10px; margin: 10px 0; border-radius: 5px; border-top: 2px solid #e74c3c;">
-            <strong style="color: #ecf0f1;">TOTAL</strong><br>
-            <span style="font-size: 1.1rem; color: #ecf0f1;">{int(total_categories):,}</span>
-            <span style="color: #bdc3c7;"> (100%)</span>
-        </div>
-        """.replace(',', ' '), unsafe_allow_html=True)
     
     st.markdown("---")
     st.markdown("### 🏆 Top 15 départements")
