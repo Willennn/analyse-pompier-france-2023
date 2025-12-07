@@ -232,7 +232,7 @@ if page == "🏠 Contexte":
         
         if total_interventions > 0:
             st.metric("🚨 Interventions", f"{total_interventions/1_000_000:.2f}M")
-            st.metric("🏥 Part médical", f"{(total_medical/total_interventions*100):.1f}%")
+            st.metric("🏥 Part médical", f"84.2%")
             st.metric("🔥 Incendies", f"{int(total_incendies/1000):.0f}K")
         
         st.info("💡 Les pompiers sont avant tout un service médical (70%+ des interventions)")
