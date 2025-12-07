@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Style CSS amélioré - TEXTE VISIBLE
+# Style CSS amélioré - TEXTE VISIBLE ET LISIBLE
 st.markdown("""
 <style>
     .main-header {
@@ -32,14 +32,21 @@ st.markdown("""
     .insight-box p, .insight-box strong {
         color: #000000 !important;
     }
-    /* Fix pour le texte sur fond blanc */
-    .stMarkdown, .stMarkdown p, .stMarkdown div {
-        color: #2c3e50 !important;
+    /* CORRECTION: Texte visible sur fond sombre */
+    .stMarkdown, .stMarkdown p, .stMarkdown div, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
+        color: #ecf0f1 !important;
     }
-    /* Metrics custom */
+    /* Metrics avec bon contraste */
     [data-testid="stMetricValue"] {
         font-size: 2rem !important;
-        color: #2c3e50 !important;
+        color: #ecf0f1 !important;
+    }
+    [data-testid="stMetricLabel"] {
+        color: #bdc3c7 !important;
+    }
+    /* Labels de graphiques lisibles */
+    .js-plotly-plot text {
+        fill: #ecf0f1 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -199,7 +206,7 @@ st.sidebar.metric("Interventions", f"{int(df_filtered['Total_interventions'].sum
 
 if page == "🏠 Contexte":
     st.markdown('<h1 class="main-header">🚒 Pompiers France 2023</h1>', unsafe_allow_html=True)
-    st.markdown('<p style="text-align: center; font-size: 1.2rem; color: #2c3e50;">Analyse des interventions des services d\'incendie et de secours</p>', unsafe_allow_html=True)
+    st.markdown('<p style="text-align: center; font-size: 1.2rem; color: #ecf0f1;">Analyse des interventions des services d\'incendie et de secours</p>', unsafe_allow_html=True)
     
     st.markdown("---")
     
@@ -208,18 +215,14 @@ if page == "🏠 Contexte":
     with col1:
         st.markdown("## 🎯 Problématique")
         st.markdown("""
-        <div style="color: #2c3e50;">
         Les services d'incendie et de secours (SDIS) constituent un pilier essentiel de la sécurité civile.
-        Avec <strong>plus de 4,5 millions d'interventions annuelles</strong>, cette analyse permet de :
+        Avec **plus de 4,5 millions d'interventions annuelles**, cette analyse permet de :
         
-        <ul>
-        <li>📍 <strong>Optimiser l'allocation des ressources</strong></li>
-        <li>🏥 <strong>Anticiper les besoins médicaux</strong></li>
-        <li>🚨 <strong>Identifier les zones sous tension</strong></li>
-        <li>💡 <strong>Guider les décisions publiques</strong></li>
-        </ul>
-        </div>
-        """, unsafe_allow_html=True)
+        - 📍 **Optimiser l'allocation des ressources**
+        - 🏥 **Anticiper les besoins médicaux**
+        - 🚨 **Identifier les zones sous tension**
+        - 💡 **Guider les décisions publiques**
+        """)
     
     with col2:
         st.markdown("## 🔢 En chiffres")
@@ -237,14 +240,10 @@ if page == "🏠 Contexte":
     st.markdown("---")
     st.markdown("## 📚 Source des données")
     st.markdown("""
-    <div style="color: #2c3e50;">
-    <ul>
-    <li><strong>Source</strong> : Ministère de l'Intérieur - data.gouv.fr</li>
-    <li><strong>Année</strong> : 2023</li>
-    <li><strong>Granularité</strong> : Département</li>
-    </ul>
-    </div>
-    """, unsafe_allow_html=True)
+    - **Source** : Ministère de l'Intérieur - data.gouv.fr
+    - **Année** : 2023
+    - **Granularité** : Département
+    """)
 
 elif page == "📊 Vue d'ensemble":
     st.markdown('<h1 class="main-header">📊 Vue d\'ensemble</h1>', unsafe_allow_html=True)
@@ -298,13 +297,14 @@ elif page == "📊 Vue d'ensemble":
                 marker=dict(colors=['#e74c3c', '#e67e22', '#f39c12', '#3498db', '#95a5a6']),
                 textinfo='label+percent',
                 textposition='outside',
-                textfont=dict(size=12, color='#2c3e50')
+                textfont=dict(size=12, color='#ecf0f1')
             )])
             
             fig_pie.update_layout(
                 height=400,
                 paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)'
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='#ecf0f1')
             )
             st.plotly_chart(fig_pie, use_container_width=True)
     
@@ -313,10 +313,10 @@ elif page == "📊 Vue d'ensemble":
         for cat, val in categories_data.items():
             pct = (val / total_inter * 100) if total_inter > 0 else 0
             st.markdown(f"""
-            <div style="background-color: #ecf0f1; padding: 10px; margin: 5px 0; border-radius: 5px;">
-                <strong style="color: #2c3e50;">{cat}</strong><br>
+            <div style="background-color: #2c3e50; padding: 10px; margin: 5px 0; border-radius: 5px;">
+                <strong style="color: #ecf0f1;">{cat}</strong><br>
                 <span style="font-size: 1.3rem; color: #e74c3c;">{int(val):,}</span>
-                <span style="color: #7f8c8d;"> ({pct:.1f}%)</span>
+                <span style="color: #bdc3c7;"> ({pct:.1f}%)</span>
             </div>
             """.replace(',', ' '), unsafe_allow_html=True)
     
@@ -354,7 +354,7 @@ elif page == "📊 Vue d'ensemble":
             yaxis_title="Interventions",
             height=400,
             paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(color='#2c3e50')
+            font=dict(color='#ecf0f1')
         )
         
         st.plotly_chart(fig_bar, use_container_width=True)
@@ -414,7 +414,7 @@ elif page == "🚑 Urgences médicales":
                 barmode='group',
                 height=400,
                 paper_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='#2c3e50')
+                font=dict(color='#ecf0f1')
             )
             
             st.plotly_chart(fig_compare, use_container_width=True)
@@ -437,10 +437,14 @@ elif page == "🚑 Urgences médicales":
                 values=list(medical_data.values()),
                 hole=0.5,
                 marker=dict(colors=['#3498db', '#9b59b6', '#27ae60', '#e74c3c']),
-                textfont=dict(color='#2c3e50')
+                textfont=dict(color='#ecf0f1')
             )])
             
-            fig_medical.update_layout(height=400, paper_bgcolor='rgba(0,0,0,0)')
+            fig_medical.update_layout(
+                height=400, 
+                paper_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='#ecf0f1')
+            )
             st.plotly_chart(fig_medical, use_container_width=True)
     
     st.markdown("---")
@@ -469,7 +473,7 @@ elif page == "🚑 Urgences médicales":
         fig_carence.update_layout(
             height=600,
             paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(color='#2c3e50')
+            font=dict(color='#ecf0f1')
         )
         st.plotly_chart(fig_carence, use_container_width=True)
     
@@ -517,7 +521,7 @@ elif page == "🔥 Incendies":
             fig_top.update_layout(
                 height=400,
                 paper_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='#2c3e50')
+                font=dict(color='#ecf0f1')
             )
             st.plotly_chart(fig_top, use_container_width=True)
     
@@ -535,10 +539,14 @@ elif page == "🔥 Incendies":
                 values=list(fire_types.values()),
                 hole=0.4,
                 marker=dict(colors=['#e74c3c', '#f39c12']),
-                textfont=dict(color='#2c3e50')
+                textfont=dict(color='#ecf0f1')
             )])
             
-            fig_types.update_layout(height=400, paper_bgcolor='rgba(0,0,0,0)')
+            fig_types.update_layout(
+                height=400, 
+                paper_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='#ecf0f1')
+            )
             st.plotly_chart(fig_types, use_container_width=True)
     
     st.markdown('<div class="insight-box"><strong>💡</strong> 7% des interventions mais ressources importantes.</div>', unsafe_allow_html=True)
@@ -606,7 +614,7 @@ elif page == "🗺️ Analyse géographique":
     
     fig_geo.update_layout(
         paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(color='#2c3e50')
+        font=dict(color='#ecf0f1')
     )
     
     st.plotly_chart(fig_geo, use_container_width=True)
@@ -635,53 +643,41 @@ elif page == "📈 Insights":
     
     with col1:
         st.markdown("""
-        <div style="color: #2c3e50;">
-        <h3>🏥 1. Transformation médicale</h3>
-        <ul>
-        <li><strong>70%+</strong> des interventions sont médicales</li>
-        <li>Les pompiers = premier acteur du secours d'urgence</li>
-        <li>Évolution majeure du métier</li>
-        </ul>
-        <p><strong>→ Renforcer la formation médicale</strong></p>
-        </div>
-        """, unsafe_allow_html=True)
+        ### 🏥 1. Transformation médicale
+        - **70%+** des interventions sont médicales
+        - Les pompiers = premier acteur du secours d'urgence
+        - Évolution majeure du métier
+        
+        **→ Renforcer la formation médicale**
+        """)
         
         st.markdown("""
-        <div style="color: #2c3e50;">
-        <h3>🚨 2. Crise des carences</h3>
-        <ul>
-        <li>Taux variable selon territoires</li>
-        <li>Certaines régions > <strong>15%</strong></li>
-        <li>Surcharge du système</li>
-        </ul>
-        <p><strong>→ Réorganisation territoriale urgente</strong></p>
-        </div>
-        """, unsafe_allow_html=True)
+        ### 🚨 2. Crise des carences
+        - Taux variable selon territoires
+        - Certaines régions > **15%**
+        - Surcharge du système
+        
+        **→ Réorganisation territoriale urgente**
+        """)
     
     with col2:
         st.markdown("""
-        <div style="color: #2c3e50;">
-        <h3>📍 3. Disparités géographiques</h3>
-        <ul>
-        <li>Concentration zones urbaines</li>
-        <li>Zones rurales sous-dotées</li>
-        <li>Inégalités d'accès</li>
-        </ul>
-        <p><strong>→ Mutualisation inter-départementale</strong></p>
-        </div>
-        """, unsafe_allow_html=True)
+        ### 📍 3. Disparités géographiques
+        - Concentration zones urbaines
+        - Zones rurales sous-dotées
+        - Inégalités d'accès
+        
+        **→ Mutualisation inter-départementale**
+        """)
         
         st.markdown("""
-        <div style="color: #2c3e50;">
-        <h3>🔥 4. Incendies critiques</h3>
-        <ul>
-        <li>Seulement <strong>7%</strong> des interventions</li>
-        <li>Mais moyens importants</li>
-        <li>Expertise spécifique</li>
-        </ul>
-        <p><strong>→ Maintenir compétences incendie</strong></p>
-        </div>
-        """, unsafe_allow_html=True)
+        ### 🔥 4. Incendies critiques
+        - Seulement **7%** des interventions
+        - Mais moyens importants
+        - Expertise spécifique
+        
+        **→ Maintenir compétences incendie**
+        """)
     
     st.markdown("---")
     
@@ -763,7 +759,7 @@ elif page == "📈 Insights":
             height=400,
             hovermode='x unified',
             paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(color='#2c3e50')
+            font=dict(color='#ecf0f1')
         )
         
         st.plotly_chart(fig_trend, use_container_width=True)
@@ -796,7 +792,7 @@ elif page == "📈 Insights":
             barmode='group',
             height=400,
             paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(color='#2c3e50')
+            font=dict(color='#ecf0f1')
         )
         
         st.plotly_chart(fig_comp, use_container_width=True)
@@ -809,48 +805,36 @@ elif page == "📈 Insights":
     
     with col1:
         st.markdown("""
-        <div style="color: #2c3e50;">
-        <h3>✅ Points forts</h3>
-        <ul>
-        <li>Couverture nationale exhaustive</li>
-        <li>Granularité départementale</li>
-        <li>Données officielles fiables</li>
-        <li>Catégorisation détaillée</li>
-        </ul>
-        </div>
-        """, unsafe_allow_html=True)
+        ### ✅ Points forts
+        - Couverture nationale exhaustive
+        - Granularité départementale
+        - Données officielles fiables
+        - Catégorisation détaillée
+        """)
     
     with col2:
         st.markdown("""
-        <div style="color: #2c3e50;">
-        <h3>⚠️ Limitations</h3>
-        <ul>
-        <li>Pas de données intra-annuelles</li>
-        <li>Carences sous-estimées</li>
-        <li>Absence délais intervention</li>
-        <li>Pas d'info effectifs/matériel</li>
-        </ul>
-        </div>
-        """, unsafe_allow_html=True)
+        ### ⚠️ Limitations
+        - Pas de données intra-annuelles
+        - Carences sous-estimées
+        - Absence délais intervention
+        - Pas d'info effectifs/matériel
+        """)
     
     st.markdown("---")
     
     st.markdown("## 🚀 Prochaines étapes")
     
     st.markdown("""
-    <div style="color: #2c3e50;">
     Pour approfondir cette étude :
     
-    <ol>
-    <li><strong>Analyse temporelle</strong> : Données années précédentes pour tendances</li>
-    <li><strong>Données RH</strong> : Croiser avec effectifs et matériel</li>
-    <li><strong>Géolocalisation</strong> : Temps de trajet et couverture fine</li>
-    <li><strong>Prédiction</strong> : Modèles de prévision des pics</li>
-    <li><strong>Benchmark</strong> : Comparaison pays européens</li>
-    <li><strong>Impact sanitaire</strong> : Effet carences sur issues patient</li>
-    </ol>
-    </div>
-    """, unsafe_allow_html=True)
+    1. **Analyse temporelle** : Données années précédentes pour tendances
+    2. **Données RH** : Croiser avec effectifs et matériel
+    3. **Géolocalisation** : Temps de trajet et couverture fine
+    4. **Prédiction** : Modèles de prévision des pics
+    5. **Benchmark** : Comparaison pays européens
+    6. **Impact sanitaire** : Effet carences sur issues patient
+    """)
     
     st.success("""
     🎯 **Conclusion finale** : Les SDIS sont en pleine mutation. La montée du médical (70%+) 
@@ -861,21 +845,18 @@ elif page == "📈 Insights":
     st.markdown("---")
     st.markdown("### 📚 Sources & Méthodologie")
     st.markdown("""
-    <div style="color: #2c3e50;">
-    <ul>
-    <li><strong>Données</strong> : Ministère Intérieur via data.gouv.fr</li>
-    <li><strong>Outil</strong> : Streamlit + Plotly</li>
-    <li><strong>Période</strong> : 2023</li>
-    <li><strong>Traitement</strong> : Python/Pandas</li>
-    </ul>
-    </div>
-    """, unsafe_allow_html=True)
+    - **Données** : Ministère Intérieur via data.gouv.fr
+    - **Outil** : Streamlit + Plotly
+    - **Période** : 2023
+    - **Traitement** : Python/Pandas
+    """)
 
 # ==================== FOOTER ====================
 st.markdown("---")
 st.markdown("""
-<div style="text-align: center; color: #7f8c8d; padding: 20px;">
-    <p><strong>🎓 Projet EFREI Paris - Data Storytelling</strong></p>
+<div style="text-align: center; color: #bdc3c7; padding: 20px;">
+    <p><strong>🎓 Projet EFREI Paris - Data Visualization & Analysis</strong></p>
+    <p>Réalisé par <strong>Willen CHIBOUT</strong></p>
     <p>Données : Ministère de l'Intérieur | data.gouv.fr</p>
     <p style="font-size: 0.9rem;">Dashboard créé avec ❤️ et Streamlit | © 2025</p>
 </div>
