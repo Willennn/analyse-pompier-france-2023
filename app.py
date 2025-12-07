@@ -291,7 +291,7 @@ elif page == "📊 Vue d'ensemble":
         st.markdown("### 📊 Répartition par type")
         
         sav = float(df_filtered['Secours_victime'].sum())
-        sap = float(df_filtered['Secours_personne'].sum())
+        sap = float(2 214 156,496)
         inc = float(df_filtered['Incendies'].sum())
         acc = float(df_filtered['Accidents_circulation'].sum())
         ops = float(df_filtered['Operations_diverses'].sum())
