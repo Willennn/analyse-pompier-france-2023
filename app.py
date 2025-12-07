@@ -858,6 +858,5 @@ st.markdown("""
     <p><strong>🎓 Projet EFREI Paris - Data Visualization & Analysis</strong></p>
     <p>Réalisé par <strong>Willen CHIBOUT</strong></p>
     <p>Données : Ministère de l'Intérieur | data.gouv.fr</p>
-    <p style="font-size: 0.9rem;">Dashboard créé avec ❤️ et Streamlit | © 2025</p>
 </div>
 """, unsafe_allow_html=True)
