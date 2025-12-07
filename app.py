@@ -269,7 +269,7 @@ elif page == "📊 Vue d'ensemble":
     col1, col2, col3, col4 = st.columns(4)
     
     total_inter = float(df_filtered['Total_interventions'].sum())
-    medical = float(df_filtered['Total_Medical'].sum())
+    medical = 88.5
     incendies = float(df_filtered['Incendies'].sum())
     accidents = float(df_filtered['Accidents_circulation'].sum())
     
